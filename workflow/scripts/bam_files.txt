@@ -1,0 +1,12 @@
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_cdna_1_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_cdna_2_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_cdna_3_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_dna_1_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_dna_2_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/ampscript_dna_3_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/gblock_enzpt_cdna_1_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/gblock_enzpt_cdna_2_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/gblock_enzpt_cdna_3_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/plasmid_enzpt_cdna_1_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/plasmid_enzpt_cdna_2_mapped.sorted.bam
+/home/uqmzardb/projects/bicycle-qc-wf/results/minimap2/plasmid_enzpt_cdna_3_mapped.sorted.bam

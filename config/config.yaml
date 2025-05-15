@@ -1,0 +1,3 @@
+samples: config/samples.tsv
+units: config/units.tsv
+ref_fa: /home/ref/misc/nanoluc_full/phase2_nanoluc_gblock_full_construct.fa
