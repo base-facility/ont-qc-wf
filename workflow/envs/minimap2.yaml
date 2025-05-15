@@ -35,4 +35,3 @@ dependencies:
   - sysroot_linux-64=2.17=h0157908_18
   - tzdata=2025a=h78e105d_0
   - zstd=1.5.7=hb8e6e7a_2
-prefix: /home/uqmzardb/miniforge3/envs/minimap2

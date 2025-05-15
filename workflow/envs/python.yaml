@@ -159,4 +159,3 @@ dependencies:
   - zstd=1.5.7=hb8e6e7a_1
   - pip:
       - prettyprint==0.1.5
-prefix: /home/uqmzardb/miniforge3/envs/python
