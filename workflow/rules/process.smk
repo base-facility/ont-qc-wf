@@ -1,6 +1,20 @@
+# Convert bam to fastq
+if not config['fastq_input']:
+    rule bam2fastq:
+        input: lambda wildcards: input_files[wildcards.id]
+        output: "results/fastq/{id}.fastq"
+        conda: "../envs/samtools.yaml"
+        log: "logs/{id}_bam2fastq.log"
+        benchmark: "benchmarks/{id}_bam2fastq.benchmark"
+        threads: 8
+        shell:
+            '''
+            samtools fastq -@ {threads} {input} > {output} 2> {log}
+            '''
+
 # Subsample input fastq files
 rule subsample:
-    input: lambda wildcards: input_files[wildcards.id]
+    input: lambda wildcards: input_files[wildcards.id] if config['fastq_input'] else "results/fastq/{id}.fastq"
     output: "results/subsample/{id}_sub.fastq.gz"
     threads: 8
     conda: "../envs/seqtk.yaml"

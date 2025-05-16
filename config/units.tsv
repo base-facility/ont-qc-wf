@@ -1,6 +1,2 @@
 sample_id	path
-bicycle_one	/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_one/calls_2025-04-21_T23-41-45.bam
-bicycle_sep	/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_sep/calls_2025-04-17_T06-02-06.bam
-pcr	/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/pcr/calls_2025-04-17_T07-14-35.bam
-plasmid	/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/plasmid/calls_2025-04-17_T09-05-44.bam
-refstd_126a	/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/refstd_126a/calls_2025-04-17_T10-44-58.bam
+rs_con_m6a_n1mpu	input_file_path
