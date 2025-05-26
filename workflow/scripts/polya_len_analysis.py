@@ -7,20 +7,26 @@
 
 # TODO
 # Modify script to make it compatible with Snakemake
+# Modify the script to have a conditional behaviour to function with both unmapped and mapped data
 
 import pysam
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 
+# files = {
+#     "bicycle_one": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_one/calls_2025-04-21_T23-41-45.bam",
+#     "bicycle_sep": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_sep/calls_2025-04-17_T06-02-06.bam",
+#     "pcr": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/pcr/calls_2025-04-17_T07-14-35.bam",
+#     "plasmid": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/plasmid/calls_2025-04-17_T09-05-44.bam",
+#     # "refstd_126a": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/refstd_126a/calls_2025-04-17_T10-44-58.bam",
+# }
+
 files = {
-    "bicycle_one": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_one/calls_2025-04-21_T23-41-45.bam",
-    "bicycle_sep": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_sep/calls_2025-04-17_T06-02-06.bam",
-    "pcr": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/pcr/calls_2025-04-17_T07-14-35.bam",
-    "plasmid": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/plasmid/calls_2025-04-17_T09-05-44.bam",
-    # "refstd_126a": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/refstd_126a/calls_2025-04-17_T10-44-58.bam",
+    "base_mcherry": "/home/uqmzardb/net/rmt_gridion/projects/trilink_mcherry_analysis/base_mcherry/mapped/calls_2025-05-26_T06-00-34.bam",
+    "trilink_mcherry": "/home/uqmzardb/net/rmt_gridion/projects/trilink_mcherry_analysis/trilink_mcherry/calls_2025-05-26_T05-50-58.bam",
 }
-output_prefix = "/home/uqmzardb/projects/bicycle-qc-wf/results/polya_len_plot"
+output_prefix = "/home/uqmzardb/projects/bicycle-qc-wf/results/polya_len_plot/mcherry_analysis"
 
 def get_pt_df(infile):
     with pysam.AlignmentFile(infile, 'rb', check_sq=False) as bam:
@@ -30,7 +36,8 @@ def get_pt_df(infile):
                 'pt': []}
         for read in bam:
             # Only primary mapped reads with pt tag and high mapping quality
-            if read.is_mapped  and not read.is_supplementary and not read.is_duplicate and not read.is_secondary and read.mapping_quality == 60:
+            # if read.is_mapped  and not read.is_supplementary and not read.is_duplicate and not read.is_secondary and read.mapping_quality == 60:
+            if read.get_tag("qs") >= 8:
                 total_reads += 1
                 if read.has_tag('pt'):
                     records['id'].append(read.query_name)
@@ -55,10 +62,15 @@ for sample, infile in files.items():
     ratio_df['polya_ratio'].append(len(df['pt']) / total_reads)
     df['sample'] = sample
     output_df = pd.concat([output_df, df], ignore_index=True)
+    # debug
+    print(output_df)
 
 # Prepare data for boxplot
 sample_names = output_df['sample'].unique()
+# debug
+print(sample_names)
 data = [output_df[output_df['sample'] == sample]['pt'] for sample in sample_names]
+
 
 # Create boxplot
 plt.figure(figsize=(10, 7))
@@ -66,9 +78,9 @@ plt.figure(figsize=(10, 7))
 plt.axhline(y=126, color='b', linestyle='--', linewidth=1)
 plt.boxplot(data, labels=sample_names, showfliers=False)
 plt.title('Distribution of polyA/T Tail Lengths')
-plt.xlabel('Sample')
 plt.ylabel('Length (bp)')
 plt.xticks(rotation=45)
+plt.tight_layout()
 # plt.grid(axis='y', linestyle='--', alpha=0.7)
 
 plt.savefig(f"{output_prefix}/polya_len_boxplot.svg", format="svg")
@@ -90,7 +102,6 @@ for bar in bars:
                 ha='center', va='bottom')
 
 # Add labels and title
-ax.set_xlabel('Sample')
 ax.set_ylabel('Polya Ratio')
 ax.set_title('PolyA ratios per sample')
 
