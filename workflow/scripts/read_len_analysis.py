@@ -6,6 +6,7 @@
 # Output: Read length distribution histogram plots
 # Author: Moe
 
+
 import pysam, json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +23,7 @@ def plot_read_length_histogram(bam_file, output_prefix, sample_name):
         discarded_ids = []
         alignment_spans = []
         read_length = []
-        # filter primary mapped reads only
+        # filter primary mapped reads only (samtools view -h -F 0xF04)
         for read in bam:
             if (not read.query_sequence or read.is_supplementary or read.is_duplicate or read.is_secondary or read.is_qcfail or read.is_unmapped):
                 discarded_ids.append(read.query_name)
@@ -51,27 +52,29 @@ def plot_read_length_histogram(bam_file, output_prefix, sample_name):
         json.dump(read_length, open(f'{output_prefix}/{sample_name}_rl.json', 'w'), indent=4)
 
 
-    # Plot histogram of read lengths
+    # Plot histogram of read lengths (filter to trim down to the 99th percentile)
     plt.figure(figsize=(10, 6))
-    # set xlim to 99th percentile to remove very long concatermer from plot
+    # set xlim to 99th percentile to remove very long concatemers from plot
     xlim = np.percentile(read_length, 99)
-    # clipped = np.clip(read_length, None, xlim)
+    clipped = np.clip(read_length, None, xlim)
     bins = np.arange(0, xlim + 10, 10)
-    median_rl = np.median(read_length)
-    mean_rl = np.mean(read_length)
+    plt.hist(read_length, bins=bins, color='skyblue', edgecolor='black')
+
+    median_rl = np.median(clipped)
+    mean_rl = np.mean(clipped)
     plt.axvline(median_rl, color='red', linestyle='--', label=f"Median: {median_rl:.0f}")
     plt.axvline(mean_rl, color='green', linestyle='-', label=f"Mean: {mean_rl:.0f}")
 
-    plt.hist(read_length, bins=bins, color='skyblue', edgecolor='black')
     plt.xlim(0, xlim + 10)
     plt.title(f'{sample_name} - Distribution of Read Lengths')
     plt.xlabel('Read Length (bp)')
     plt.ylabel('Frequency')
+    plt.legend(loc='upper left')
     
     # Save the plot in different formats
-    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.svg", format='svg')  # Vector format (SVG)
-    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.png", format='png', dpi=300)  # Rasterized format (PNG)
-    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.pdf", format='pdf')  # Vector format (PDF)
+    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.svg", format='svg')
+    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.png", format='png', dpi=300)
+    plt.savefig(f"{output_prefix}/{sample_name}_rl_hist.pdf", format='pdf')
 
     plt.close()
     
@@ -79,14 +82,21 @@ def plot_read_length_histogram(bam_file, output_prefix, sample_name):
     plt.figure(figsize=(10, 6))
     bins = np.arange(0, max(alignment_spans) + 10, 10)
     plt.hist(alignment_spans, bins=bins, color='skyblue', edgecolor='black')
+    
+    median_span = np.median(alignment_spans)
+    mean_span = np.mean(alignment_spans)
+    plt.axvline(median_span, color='red', linestyle='--', label=f"Median: {median_span:.0f}")
+    plt.axvline(mean_span, color='green', linestyle='-', label=f"Mean: {mean_span:.0f}")
+
     plt.title(f'{sample_name} - Distribution of alignment lengths')
-    plt.xlabel('Read length (bp)')
+    plt.xlabel('Alignment length (bp): aligned_position(end) - aligned_position(start)')
     plt.ylabel('Frequency')
+    plt.legend(loc='upper left')
     
     # Save the plot in different formats
-    plt.savefig(f"{output_prefix}/{sample_name}_alignment_span_hist.svg", format='svg')  # Vector format (SVG)
-    plt.savefig(f"{output_prefix}/{sample_name}_alignment_span_hist.png", format='png', dpi=300)  # Rasterized format (PNG)
-    plt.savefig(f"{output_prefix}/{sample_name}_alignment_span_hist.pdf", format='pdf')  # Vector format (PDF)
+    plt.savefig(f"{output_prefix}/{sample_name}_aligned_len_hist.svg", format='svg')
+    plt.savefig(f"{output_prefix}/{sample_name}_aligned_len_hist.png", format='png', dpi=300)
+    plt.savefig(f"{output_prefix}/{sample_name}_aligned_len_hist.pdf", format='pdf')
 
     plt.close()
 

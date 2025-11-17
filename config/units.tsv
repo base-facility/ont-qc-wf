@@ -1,2 +1,5 @@
-sample_id	path
-rs_con_m6a_n1mpu	input_file_path
+sample_id	path	ref_path
+ha_h1n1	/home/projects/251111_ont_drna_analysis/dorado_bc/ha_h1n1/calls_2025-11-13_T00-36-11.bam	/home/projects/251111_ont_drna_analysis/ref/ha_h1n1.fa
+nanoluc	/home/projects/251111_ont_drna_analysis/dorado_bc/nanoluc/calls_2025-11-13_T01-24-56.bam	/home/projects/251111_ont_drna_analysis/ref/nanoluc.fa
+ovalbumin	/home/projects/251111_ont_drna_analysis/dorado_bc/ovalbumin/calls_2025-11-13_T02-03-45.bam	/home/projects/251111_ont_drna_analysis/ref/ovalbumin.fa
+siinfekl	/home/projects/251111_ont_drna_analysis/dorado_bc/siinfekl/calls_2025-11-13_T02-55-49.bam	/home/projects/251111_ont_drna_analysis/ref/siinfekl.fa

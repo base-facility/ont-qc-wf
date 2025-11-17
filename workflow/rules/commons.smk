@@ -4,6 +4,7 @@ samples = pd.read_table(config['samples'], sep="\t").set_index("sample_id", drop
 units = pd.read_table(config['units'], sep="\t").set_index("sample_id", drop=False)
 
 input_files = dict(zip(units['sample_id'], units['path']))
+input_refs = dict(zip(units['sample_id'], units['ref_path']))
 condition = dict(zip(samples['sample_id'], samples['condition']))
 
 def run_sample(sample_id):
