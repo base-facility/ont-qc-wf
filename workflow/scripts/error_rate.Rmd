@@ -1,0 +1,93 @@
+---
+title: "error_rate"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, echo=FALSE}
+
+library(data.table)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(here)
+library(readr)
+```
+
+```{r import cdna and dna data}
+samples <- c("ha_h1n1", "nanoluc", "ovalbumin", "siinfekl")
+files <- list.files(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped"), pattern="\\.mpileup\\.tsv$", full.names=TRUE)
+names(files) <- basename(files) %>% str_replace(".mpileup.tsv", "")
+df_list <- list()
+for (sample in names(files)) {
+  infile <- files[[sample]]
+  df <- fread(infile, 
+              sep="\t",
+              quote="",
+              header=FALSE, 
+              col.names=c("chr", "refPos", "refBase", "cov", "calls", "qual"))
+  df_list[[sample]] <- df %>% select("chr", "refPos", "refBase", "cov", "calls")
+}
+```
+
+```{r helper functions}
+
+count_nucleotides <- function(sequence) {
+  sequence <- toupper(sequence)
+  
+  # Count occurrences of A, C, G, and T
+  counts <- sapply(c("A", "C", "G", "T"), function(nuc) {
+    sum(strsplit(sequence, "")[[1]] == nuc)
+  })
+  
+  return(as.list(counts))
+}
+
+```
+
+The total count does not consider redundant coverage counts and therefore, error rates are underestimated and biased.
+get mismatches, insertions, deletions; then count the number of total bases somehow; easy ratio after! 
+
+```{r get counts}
+
+counts <- list()
+for (sample in names(df_list)) {
+  df_list[[sample]] %>%
+  mutate(clean_calls = str_replace_all(toupper(calls), "[+-]\\d+[ACGTNacgtn]+", ""),
+         A = str_count(clean_calls, "A"),
+         C = str_count(clean_calls, "C"),
+         G = str_count(clean_calls, "G"),
+         T = str_count(clean_calls, "T"))  %>% 
+    dplyr::group_by(refBase) %>% 
+    dplyr::summarise(cov=sum(cov), A=sum(A), C=sum(C), G=sum(G), T=sum(T)) -> counts[[sample]]
+}
+# given `counts` diagonal values still have some non zero values, a sanity check would be to compare reported coverage in mpileup to retrieved counts from the pileup sequence 
+```
+
+```{r gen error rate dataframe}
+list_function <- function(df){
+  df %>% summarise(to_a=sum(A)/sum(cov), 
+                   to_c=sum(C)/sum(cov),
+                   to_g=sum(G)/sum(cov),
+                   to_t=sum(T)/sum(cov))
+}
+lapply(counts, list_function)
+
+list_function <- function(df, name) {
+  df %>%
+    summarise(to_a = sum(A) / sum(cov),
+              to_c = sum(C) / sum(cov),
+              to_g = sum(G) / sum(cov),
+              to_t = sum(T) / sum(cov)) %>%
+    mutate(sample = str_replace(name, ".pileup.tsv", ""))  # Add the list element name as a new column
+}
+
+# Apply the function while passing both the dataframe and its name
+result_list <- Map(list_function, counts, names(counts))
+
+# Combine results into a single data frame
+df_combined <- bind_rows(result_list)
+write_csv(df_combined %>% dplyr::select(sample, to_a, to_c, to_g, to_t),
+          file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_mismatch_error_rates.csv"))
+```

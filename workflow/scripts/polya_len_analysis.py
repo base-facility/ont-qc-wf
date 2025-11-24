@@ -14,19 +14,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 
-# files = {
-#     "bicycle_one": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_one/calls_2025-04-21_T23-41-45.bam",
-#     "bicycle_sep": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/bicycle_sep/calls_2025-04-17_T06-02-06.bam",
-#     "pcr": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/pcr/calls_2025-04-17_T07-14-35.bam",
-#     "plasmid": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/plasmid/calls_2025-04-17_T09-05-44.bam",
-#     # "refstd_126a": "/home/uqmzardb/net/rmt_gridion/projects/bicycle/250416_ont_drna_data/base_calls/refstd_126a/calls_2025-04-17_T10-44-58.bam",
-# }
-
 files = {
-    "base_mcherry": "/home/uqmzardb/net/rmt_gridion/projects/trilink_mcherry_analysis/base_mcherry/mapped/calls_2025-05-26_T06-00-34.bam",
-    "trilink_mcherry": "/home/uqmzardb/net/rmt_gridion/projects/trilink_mcherry_analysis/trilink_mcherry/calls_2025-05-26_T05-50-58.bam",
+    "ha_h1n1": "/home/projects/251111_ont_drna_analysis/ont-qc-wf/results/primary_mapped/ha_h1n1.primary_mapped.sorted.bam",
+    "nanoluc": "/home/projects/251111_ont_drna_analysis/ont-qc-wf/results/primary_mapped/nanoluc.primary_mapped.sorted.bam",
+    "ovalbumin": "/home/projects/251111_ont_drna_analysis/ont-qc-wf/results/primary_mapped/ovalbumin.primary_mapped.sorted.bam",
+    "siinfekl": "/home/projects/251111_ont_drna_analysis/ont-qc-wf/results/primary_mapped/siinfekl.primary_mapped.sorted.bam",
 }
-output_prefix = "/home/uqmzardb/projects/bicycle-qc-wf/results/polya_len_plot/mcherry_analysis"
+output_prefix = "/home/projects/251111_ont_drna_analysis/ont-qc-wf/results/polya_len_analysis"
 
 def get_pt_df(infile):
     with pysam.AlignmentFile(infile, 'rb', check_sq=False) as bam:
@@ -37,11 +31,15 @@ def get_pt_df(infile):
         for read in bam:
             # Only primary mapped reads with pt tag and high mapping quality
             # if read.is_mapped  and not read.is_supplementary and not read.is_duplicate and not read.is_secondary and read.mapping_quality == 60:
-            if read.get_tag("qs") >= 8:
-                total_reads += 1
-                if read.has_tag('pt'):
-                    records['id'].append(read.query_name)
-                    records['pt'].append(int(read.get_tag('pt')))
+            # if read.get_tag("qs") >= 8:
+            #     total_reads += 1
+            #     if read.has_tag('pt'):
+            #         records['id'].append(read.query_name)
+            #         records['pt'].append(int(read.get_tag('pt')))
+            total_reads += 1
+            if read.has_tag('pt'):
+                records['id'].append(read.query_name)
+                records['pt'].append(int(read.get_tag('pt')))
         df = pd.DataFrame(records)
         print(f"polya ratio: {len(df['pt']) / total_reads}")
         return((df, total_reads))

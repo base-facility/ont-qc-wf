@@ -11,12 +11,12 @@ include: "rules/process.smk"
 
 rule all:
     input:
-        expand("results/subsample/{id}_sub.fastq.gz", id=samples['sample_id']),
-        expand("results/minimap2/{id}_mapped.sorted.bam", id=samples['sample_id']),
+        # expand("results/subsample/{id}_sub.fastq.gz", id=samples['sample_id']),
+        # expand("results/minimap2/{id}_mapped.sorted.bam", id=samples['sample_id']),
         # expand("results/mpileup/{id}.mpileup.tsv", id=samples['sample_id']),
-        expand("results/mpileup_primary_mapped/{id}.mpileup.tsv", id=samples['sample_id']),
-        # expand("results/samtools_stats/{id}.stats.txt", id=samples['sample_id']),
-        expand("results/samtools_stats_primary_mapped/{id}.stats.txt", id=samples['sample_id']),
         # expand("results/samtools_stats/{id}_indel_rate.tsv", id=samples['sample_id']),
-        expand("results/samtools_stats_primary_mapped/{id}_indel_rate.tsv", id=samples['sample_id']),
+        expand("results/samtools_stats/{id}.stats.txt", id=samples['sample_id']),
+        expand("results/mpileup_primary_mapped/{id}.mpileup.tsv", id=samples['sample_id']),
+        expand("results/samtools_stats_primary_mapped/{id}.stats.txt", id=samples['sample_id']),
+        # expand("results/samtools_stats_primary_mapped/{id}_indel_rate.tsv", id=samples['sample_id']),
         expand("results/read_len_hist/{id}_rl_hist.svg", id=samples['sample_id']),

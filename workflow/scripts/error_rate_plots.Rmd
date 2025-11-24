@@ -1,0 +1,36 @@
+---
+title: "error_rate_plots"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(data.table)
+library(here)
+library(readr)
+library(ggsci)
+```
+
+```{r import}
+input_path <- file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_indel_rates.tsv")
+indel_rates <- fread(input_path, sep="\t")
+mismatch_rates <- fread(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_mismatch_error_rates.csv"))
+df_plot <- indel_rates %>% 
+  dplyr::left_join(mismatch_rates) %>%
+  pivot_longer(cols = -sample, names_to = "rate_type", values_to = "rate")
+```
+
+```{r plot}
+ggplot(df_plot, aes(x = sample, y = rate, fill = rate_type)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title.x = element_blank()) +  # Rotate x labels
+  labs(y = "Error Rate", title = "Error Rates by Sample") +
+  scale_fill_npg()   # Different colors for each sample
+
+ggsave(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "bicycle_251111_error_rate.svg"), width = 8, height = 6, create.dir=TRUE)
+```
