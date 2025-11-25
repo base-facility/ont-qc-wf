@@ -85,6 +85,9 @@ plt.savefig(f"{output_prefix}/polya_len_boxplot.svg", format="svg")
 plt.savefig(f"{output_prefix}/polya_len_boxplot.png", dpi=300)
 plt.savefig(f"{output_prefix}/polya_len_boxplot.pdf", format='pdf')
 
+# save plot data
+output_df.to_csv(f"{output_prefix}/polya_len_boxplot_data.csv", index=False)
+
 # Geneerate barplot
 fig, ax = plt.subplots(figsize=(8, 6))
 bars = ax.bar(ratio_df['sample'], ratio_df['polya_ratio'], 
@@ -106,6 +109,9 @@ ax.set_title('PolyA ratios per sample')
 fig.savefig(f"{output_prefix}/polya_ratios_barplot.svg", format="svg")
 fig.savefig(f"{output_prefix}/polya_ratios_barplot.png", dpi=300)
 fig.savefig(f"{output_prefix}/polya_ratios_barplot.pdf", format='pdf')
+
+# save plot data
+pd.DataFrame(ratio_df).to_csv(f"{output_prefix}/polya_ratios_barplot_data.csv", index=False)
 
 # Dev
 # read.mapping_quality == 60
