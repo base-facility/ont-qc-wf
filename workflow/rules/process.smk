@@ -82,7 +82,7 @@ rule samtools_filter:
     output: "results/primary_mapped/{id}.primary_mapped.sorted.bam"
     conda: "../envs/samtools.yaml"
     log: "logs/samtools_filter_primary_mapped_{id}.log"
-    benchmark: "benchmark/samtools_filter_primary_mapped_{id}.benchmark"
+    benchmark: "benchmarks/samtools_filter_primary_mapped_{id}.benchmark"
     shell:
         '''
         samtools view -o {output} -O BAM -h -F 0xF04 {input} 2> {log};

@@ -1,30 +1,21 @@
----
-title: "error_rate_plots"
-output: html_document
-editor_options: 
-  chunk_output_type: console
----
-
-```{r setup, echo=FALSE}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(data.table)
-library(here)
 library(readr)
 library(ggsci)
-```
 
-```{r import}
-input_path <- file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_indel_rates.tsv")
+input_path <- file.path("/home/uqmzardb/projects/250416_ont_drna_bicycle_analysis/ont-qc-wf/results/samtools_stats/total_indel_rates.tsv")
+
+mismatch_rates <- fread(file.path("/home/uqmzardb/projects/250416_ont_drna_bicycle_analysis/ont-qc-wf/results/mpileup_primary_mapped/total_mismatch_error_rates.csv"))
+
+dir_path <- "/home/uqmzardb/projects/250416_ont_drna_bicycle_analysis/ont-qc-wf/results/mpileup_primary_mapped"
+
 indel_rates <- fread(input_path, sep="\t")
-mismatch_rates <- fread(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_mismatch_error_rates.csv"))
 df_plot <- indel_rates %>% 
   dplyr::left_join(mismatch_rates) %>%
   pivot_longer(cols = -sample, names_to = "rate_type", values_to = "rate")
-```
 
-```{r plot}
 ggplot(df_plot, aes(x = sample, y = rate, fill = rate_type)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   theme_classic() +
@@ -32,5 +23,6 @@ ggplot(df_plot, aes(x = sample, y = rate, fill = rate_type)) +
   labs(y = "Error Rate", title = "Error Rates by Sample") +
   scale_fill_npg()   # Different colors for each sample
 
-ggsave(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "bicycle_251111_error_rate.svg"), width = 8, height = 6, create.dir=TRUE)
-```
+ggsave(file.path(dir_path, "error_rate.svg"), width = 8, height = 6)
+
+write_delim(df_plot, delim=',', file=file.path(dir_path, "error_rate_plot_data.csv"))

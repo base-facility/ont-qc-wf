@@ -1,25 +1,18 @@
----
-title: "error_rate"
-output: html_document
-editor_options: 
-  chunk_output_type: console
----
-
-```{r setup, echo=FALSE}
-
 library(data.table)
 library(tidyr)
 library(stringr)
 library(dplyr)
-library(here)
 library(readr)
-```
 
-```{r import cdna and dna data}
-samples <- c("ha_h1n1", "nanoluc", "ovalbumin", "siinfekl")
-files <- list.files(file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped"), pattern="\\.mpileup\\.tsv$", full.names=TRUE)
+samples <- c("bicycle_one", "bicycle_sep", "pcr", "plasmid")
+dir_path <- "/home/uqmzardb/projects/250416_ont_drna_bicycle_analysis/ont-qc-wf/results/mpileup_primary_mapped"
+
+files <- list.files(file.path(dir_path), pattern="\\.mpileup\\.tsv$", full.names=TRUE)
+
 names(files) <- basename(files) %>% str_replace(".mpileup.tsv", "")
+
 df_list <- list()
+
 for (sample in names(files)) {
   infile <- files[[sample]]
   df <- fread(infile, 
@@ -29,9 +22,6 @@ for (sample in names(files)) {
               col.names=c("chr", "refPos", "refBase", "cov", "calls", "qual"))
   df_list[[sample]] <- df %>% select("chr", "refPos", "refBase", "cov", "calls")
 }
-```
-
-```{r helper functions}
 
 count_nucleotides <- function(sequence) {
   sequence <- toupper(sequence)
@@ -44,13 +34,6 @@ count_nucleotides <- function(sequence) {
   return(as.list(counts))
 }
 
-```
-
-The total count does not consider redundant coverage counts and therefore, error rates are underestimated and biased.
-get mismatches, insertions, deletions; then count the number of total bases somehow; easy ratio after! 
-
-```{r get counts}
-
 counts <- list()
 for (sample in names(df_list)) {
   df_list[[sample]] %>%
@@ -62,10 +45,7 @@ for (sample in names(df_list)) {
     dplyr::group_by(refBase) %>% 
     dplyr::summarise(cov=sum(cov), A=sum(A), C=sum(C), G=sum(G), T=sum(T)) -> counts[[sample]]
 }
-# given `counts` diagonal values still have some non zero values, a sanity check would be to compare reported coverage in mpileup to retrieved counts from the pileup sequence 
-```
 
-```{r gen error rate dataframe}
 list_function <- function(df){
   df %>% summarise(to_a=sum(A)/sum(cov), 
                    to_c=sum(C)/sum(cov),
@@ -83,11 +63,9 @@ list_function <- function(df, name) {
     mutate(sample = str_replace(name, ".pileup.tsv", ""))  # Add the list element name as a new column
 }
 
-# Apply the function while passing both the dataframe and its name
 result_list <- Map(list_function, counts, names(counts))
 
-# Combine results into a single data frame
 df_combined <- bind_rows(result_list)
+
 write_csv(df_combined %>% dplyr::select(sample, to_a, to_c, to_g, to_t),
-          file.path(here(), "251111_bicycle", "results", "mpileup_primary_mapped", "total_mismatch_error_rates.csv"))
-```
+          file.path(dir_path, "total_mismatch_error_rates.csv"))
