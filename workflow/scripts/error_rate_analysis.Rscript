@@ -1,0 +1,377 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages({
+  library(data.table)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(here)
+  library(readr)
+  library(ggsci)
+})
+
+##############################
+# Handle command-line argument
+##############################
+
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) < 1) {
+  stop("ERROR: No input directory supplied.\nUsage: Rscript error_rate_analysis.R /path/to/mpileup_dir")
+}
+
+input_dir <- args[1]
+
+if (!dir.exists(input_dir)) {
+  stop("ERROR: Provided input directory does not exist: ", input_dir)
+}
+
+message("Using input directory: ", input_dir)
+
+output_dir <- args[2]
+
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+  message("Output directory created: ", output_dir)
+} else {
+  message("Using existing output directory: ", output_dir)
+}
+
+##############################
+# Parse mpileup calls
+##############################
+
+# Parse a pileup calls string into base/match/indel counts
+# - A/C/G/T/N: mismatching bases (relative to ref)
+# - . ,      : matches to reference
+# - +lenSEQ  : insertion of 'len' bases (counted as 'len' inserted bases)
+# - -lenSEQ  : deletion of 'len' bases (counted as 'len' deleted bases)
+# - *        : continuation of deletion in downstream positions (ignored here to avoid double-counting)
+parse_pileup_calls <- function(calls, ref_base) {
+  ref_base <- toupper(ref_base)
+  n <- nchar(calls)
+  i <- 1L
+
+  counts <- c(
+    A = 0L, C = 0L, G = 0L, T = 0L, N = 0L,
+    matches = 0L,
+    insertions = 0L,
+    deletions = 0L
+  )
+
+  while (i <= n) {
+    ch <- substr(calls, i, i)
+
+    # start of read segment; skip mapping quality char
+    if (ch == "^") {
+      i <- i + 2L
+      next
+    }
+
+    # end of read segment
+    if (ch == "$") {
+      i <- i + 1L
+      next
+    }
+
+    # matches to reference
+    if (ch %in% c(".", ",")) {
+      counts["matches"] <- counts["matches"] + 1L
+      i <- i + 1L
+      next
+    }
+
+    # insertions / deletions: +/-<len><seq>
+    if (ch %in% c("+", "-")) {
+      sign <- ch
+      i <- i + 1L
+      len_start <- i
+
+      # read the length
+      while (i <= n && grepl("[0-9]", substr(calls, i, i))) {
+        i <- i + 1L
+      }
+
+      len <- as.integer(substr(calls, len_start, i - 1L))
+
+      # skip the inserted/deleted bases
+      i <- i + len
+
+      # count bases affected
+      if (!is.na(len) && len > 0L) {
+        if (sign == "+") {
+          counts["insertions"] <- counts["insertions"] + len
+        } else {
+          counts["deletions"] <- counts["deletions"] + len
+        }
+      }
+
+      next
+    }
+
+    # '*' is continuation of deletion; already counted at '-len' position
+    if (ch == "*") {
+      i <- i + 1L
+      next
+    }
+
+    # explicit mismatching base
+    if (ch %in% c("A","C","G","T","N","a","c","g","t","n")) {
+      base <- toupper(ch)
+      counts[base] <- counts[base] + 1L
+      i <- i + 1L
+      next
+    }
+
+    # unknown symbol
+    i <- i + 1L
+  }
+
+  as.list(counts)
+}
+
+##############################
+# Input files
+##############################
+
+mpileup_files <- list.files(input_dir, pattern = "\\.mpileup\\.tsv$", full.names = TRUE)
+
+if (length(mpileup_files) == 0) {
+  stop("No .mpileup.tsv files found in input directory: ", input_dir)
+}
+
+per_base_list <- list()
+indel_summary <- list()
+mismatch_summary <- list()
+
+##############################
+# Processing
+##############################
+
+for (file in mpileup_files) {
+  sample_name <- basename(file) %>% sub("\\.mpileup\\.tsv$", "", .)
+  message("Processing ", sample_name)
+
+  dt <- fread(
+    file,
+    sep = "\t",
+    header = FALSE,
+    col.names = c("chr", "refPos", "refBase", "cov", "calls", "qual")
+  )
+
+  # avoid 0/0
+  dt <- dt[cov > 0]
+
+  parsed <- dt[, parse_pileup_calls(calls, refBase), by = .(chr, refPos, refBase, cov)] # group by and apply row-wise
+
+  parsed[, refBase := toupper(refBase)]
+  parsed[, sample := sample_name]
+
+  # mismatching bases (including N)
+  parsed[, mismatch_count := A + C + G + T + N]
+
+  # per-position error rates
+  parsed[, `:=`(
+    sub_error = mismatch_count / cov,     # substitution error rate
+    ins_error = insertions / cov,         # insertion (bases) error rate
+    del_error = deletions / cov           # deletion (bases) error rate
+  )]
+
+  # per-position data
+  per_base_list[[sample_name]] <- parsed[, .(
+    sample, chr, refPos, refBase, cov,
+    sub_error, ins_error, del_error
+  )]
+
+  # sample-level indel rates (bases per covered base)
+  indel_summary[[sample_name]] <- parsed[, .(
+    ins_rate = sum(insertions) / sum(cov),
+    del_rate = sum(deletions) / sum(cov)
+  ), by = sample]
+
+  # sample-level mismatch spectrum (per covered base) — exclude N
+  mismatch_summary[[sample_name]] <- parsed[, .(
+    to_a = sum(A) / sum(cov),
+    to_c = sum(C) / sum(cov),
+    to_g = sum(G) / sum(cov),
+    to_t = sum(T) / sum(cov)
+  ), by = sample]
+}
+
+##############################
+# Combine outputs
+##############################
+
+per_base_dt <- rbindlist(per_base_list)
+indel_dt    <- rbindlist(indel_summary)
+mismatch_dt <- rbindlist(mismatch_summary)
+
+write_csv(per_base_dt, file.path(output_dir, "per_nucleotide_error_rates_with_indels.csv"))
+fwrite(indel_dt,    file.path(output_dir, "total_indel_rates.tsv"), sep = "\t")
+write_csv(mismatch_dt, file.path(output_dir, "total_mismatch_error_rates.csv"))
+
+##############################
+# Plots
+##############################
+
+sample_levels <- indel_dt$sample |> unique()
+
+# ----------------------------
+# Barplot of overall error components per sample
+# (ins_rate, del_rate, to_a, to_c, to_g, to_t)
+# ----------------------------
+bar_df <- indel_dt %>%
+  left_join(mismatch_dt, by = "sample") %>%
+  pivot_longer(
+    cols = -sample,
+    names_to = "rate_type",
+    values_to = "rate"
+  ) %>%
+  mutate(sample = factor(sample, levels = sample_levels))
+
+p_bar <- ggplot(bar_df, aes(x = sample, y = rate, fill = rate_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Error Rate", title = "Error Rates by Sample") +
+  scale_fill_npg()
+
+ggsave(
+  file.path(output_dir, "error_rates_barplot.svg"),
+  p_bar, width = 8, height = 6
+)
+
+fwrite(bar_df, file.path(output_dir, "error_rates_barplot_data.tsv"), sep = "\t")
+
+# ----------------------------
+# Per-nucleotide substitution boxplot (by refBase)
+# ----------------------------
+box_df <- per_base_dt %>%
+  mutate(
+    sample  = factor(sample, levels = sample_levels),
+    refBase = factor(refBase, levels = c("A", "C", "G", "T"))
+  )
+
+p_box_sub <- ggplot(box_df, aes(x = sample, y = sub_error, fill = refBase)) +
+  geom_boxplot(outliers = FALSE) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Substitution error rate", title = "Per-nucleotide substitution error rates") +
+  scale_fill_npg(drop = FALSE)
+
+ggsave(
+  file.path(output_dir, "error_rate_per_n_boxplot.svg"),
+  p_box_sub, width = 9, height = 6
+)
+
+fwrite(box_df, file.path(output_dir, "error_rate_per_n_boxplot_data.tsv"), sep = "\t")
+
+# ----------------------------
+# Boxplot of mismatch vs insertion vs deletion error rates per position
+# ----------------------------
+error_components_df <- per_base_dt %>%
+  mutate(sample = factor(sample, levels = sample_levels)) %>%
+  transmute(
+    sample, chr, refPos,
+    sub_error_rate = sub_error,
+    ins_error_rate = ins_error,
+    del_error_rate = del_error
+  ) %>%
+  pivot_longer(
+    cols = c(sub_error_rate, ins_error_rate, del_error_rate),
+    names_to = "error_type",
+    values_to = "rate"
+  ) %>%
+  mutate(
+    error_type = factor(
+      error_type,
+      levels = c("sub_error_rate", "ins_error_rate", "del_error_rate"),
+      labels = c("Mismatch", "Insertion", "Deletion")
+    )
+  )
+
+p_box_components <- ggplot(error_components_df, aes(x = sample, y = rate, fill = error_type)) +
+  geom_boxplot(outliers = FALSE) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Error rate", title = "Mismatch and indel error rates per position") +
+  scale_fill_npg(name = "Error type")
+
+ggsave(
+  file.path(output_dir, "error_rate_boxplot.svg"),
+  p_box_components, width = 9, height = 6
+)
+
+fwrite(error_components_df, file.path(output_dir, "error_rate_boxplot_data.tsv"), sep = "\t")
+
+# ----------------------------
+# Boxplot: per-nucleotide mismatch + insertion + deletion error rates per position
+# ----------------------------
+
+# A/C/G/T mismatch error rates per position by sample
+acgt_mismatch_df <- per_base_dt %>%
+  mutate(
+    sample  = factor(sample, levels = sample_levels),
+    refBase = toupper(refBase)
+  ) %>%
+  filter(refBase %in% c("A", "C", "G", "T")) %>%
+  transmute(
+    sample,
+    category = refBase,   # "A", "C", "G", "T"
+    rate     = sub_error  # mismatch error rate
+  )
+
+# Insertion and deletion error rates per position by sample
+ins_del_df <- per_base_dt %>%
+  mutate(sample = factor(sample, levels = sample_levels)) %>%
+  transmute(
+    sample,
+    Insertion = ins_error,
+    Deletion  = del_error
+  ) %>%
+  pivot_longer(
+    cols = c(Insertion, Deletion),
+    names_to = "category",
+    values_to = "rate"
+  )
+
+# Combine: categories = A, C, G, T (mismatch), Insertion, Deletion
+acgt_insdel_df <- bind_rows(acgt_mismatch_df, ins_del_df) %>%
+  mutate(
+    category = factor(
+      category,
+      levels = c("A", "C", "G", "T", "Insertion", "Deletion")
+    )
+  )
+
+p_box_acgt_insdel <- ggplot(
+  acgt_insdel_df,
+  aes(x = sample, y = rate, fill = category)
+) +
+  geom_boxplot(outliers = FALSE, position = position_dodge(width = 0.8)) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank()
+  ) +
+  labs(
+    y = "Error rate",
+    title = "A/C/G/T mismatch, insertion, and deletion error rates per position"
+  ) +
+  scale_fill_npg(name = "Category")
+
+
+ggsave(
+  file.path(output_dir, "error_rate_full_boxplot.svg"),
+  p_box_acgt_insdel, width = 10, height = 6
+)
+
+# Save data + plot
+fwrite(
+  acgt_insdel_df,
+  file.path(output_dir, "error_rate_full_boxplot_data.tsv"),
+  sep = "\t"
+)
+
+##############################
+message("Done.")
+##############################
