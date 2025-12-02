@@ -232,7 +232,7 @@ p_bar <- ggplot(bar_df, aes(x = sample, y = rate, fill = rate_type)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Error Rate", title = "Error Rates by Sample") +
+  labs(y = "Error Rate", title = "Mean Error Rate by Sample") +
   scale_fill_npg()
 
 ggsave(
@@ -293,7 +293,7 @@ p_box_components <- ggplot(error_components_df, aes(x = sample, y = rate, fill =
   geom_boxplot(outliers = FALSE) +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Error rate", title = "Mismatch and indel error rates per position") +
+  labs(y = "Error rate", title = "Mismatch and indel error rates per nucleotide position") +
   scale_fill_npg(name = "Error type")
 
 ggsave(
@@ -316,7 +316,7 @@ acgt_mismatch_df <- per_base_dt %>%
   filter(refBase %in% c("A", "C", "G", "T")) %>%
   transmute(
     sample,
-    category = refBase,   # "A", "C", "G", "T"
+    category = refBase,
     rate     = sub_error  # mismatch error rate
   )
 
@@ -355,7 +355,7 @@ p_box_acgt_insdel <- ggplot(
   ) +
   labs(
     y = "Error rate",
-    title = "A/C/G/T mismatch, insertion, and deletion error rates per position"
+    title = "Per-nucleotide mismatch, insertion, and deletion error rate"
   ) +
   scale_fill_npg(name = "Category")
 
